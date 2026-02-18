@@ -182,16 +182,16 @@ export default function QuizPage() {
         </div>
       </div>
 
-      <main className="flex min-h-screen items-center mt-4 justify-center bg-gray-50 p-8">
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
         
-        <div className="rounded-xl bg-white p-8 shadow-lg">
+        <div className="rounded-xl bg-white p-8 shadow-xl">
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold text-gray-800">Question {index + 1} of {total}</h2>
+                <h2 className="text-3xl font-bold text-gray-700">Question {index + 1} of {total}</h2>
                 <div className="text-lg text-gray-600">{q.category}</div>
-                <div className="mt-2 text-xl">{difficultyStars(q.difficulty)}</div>
+                <div className="text-xl">{difficultyStars(q.difficulty)}</div>
               </div>
               
             </div>
@@ -215,7 +215,7 @@ export default function QuizPage() {
               <div>Score: {scorePercent}%</div>
               <div>Max Score: {maxPossible}%</div>
             </div>
-            <div className="h-3 w-full rounded bg-gray-200">
+            <div className="h-8 w-full rounded bg-gray-200">
               <div className="h-full bg-[#1e2939]" style={{ width: `${scorePercent}%` }} />
             </div>
           </footer>

@@ -72,7 +72,7 @@ export default function ResultsPage() {
         ) : (
           <>
             <p className="mb-4 text-lg text-gray-700">You scored</p>
-            <div className="mb-2 text-5xl font-extrabold text-blue-600">{score}/{total}</div>
+            <div className="mb-2 text-5xl font-extrabold text-gray-800">{score}/{total}</div>
             
             {/* Percentage display */}
             <div className="mb-4 text-xl font-semibold text-gray-600">
@@ -93,7 +93,7 @@ export default function ResultsPage() {
             <div className="mb-6">
               <div className="h-4 w-full rounded-full bg-gray-200">
                 <div 
-                  className="h-4 rounded-full bg-blue-500 transition-all duration-500"
+                  className="h-4 rounded-full bg-gray-900 transition-all duration-500"
                   style={{ width: `${(score / total) * 100}%` }}
                 />
               </div>
