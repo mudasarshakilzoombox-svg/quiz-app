@@ -13,7 +13,7 @@ export default function Button({ size = 'md', className = '', children, ...rest 
     <button
       {...rest}
       className={
-        'inline-flex items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 ' +
+        'inline-flex items-center justify-center rounded-md bg-[#dcdedc] text-black shadow-sm hover:bg-[#9f9f9f] focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 ' +
         sizeCls +
         ' ' +
         className

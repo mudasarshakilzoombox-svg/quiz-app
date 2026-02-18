@@ -33,6 +33,20 @@ export default function QuizPage() {
 
   useEffect(() => {
     let mounted = true
+    
+    // Check if questions are already saved from a previous session
+    try {
+      const savedQuestions = localStorage.getItem('quiz_questions')
+      if (savedQuestions) {
+        const parsed = JSON.parse(savedQuestions)
+        if (mounted) setQuestions(parsed)
+        return
+      }
+    } catch (e) {
+      // continue with fetch if parse fails
+    }
+    
+    // Only fetch and shuffle if no saved questions exist
     fetch('/data/questions.json')
       .then((r) => r.json())
       .then((raw: RawQ[]) => {
@@ -54,13 +68,46 @@ export default function QuizPage() {
         // shuffle the questions themselves and limit to 20 unique questions
         const shuffledQuestions = shuffle(mapped)
         const limit = Math.min(20, shuffledQuestions.length)
-        setQuestions(shuffledQuestions.slice(0, limit))
+        const finalQuestions = shuffledQuestions.slice(0, limit)
+        setQuestions(finalQuestions)
+        // Save questions for future sessions
+        try {
+          localStorage.setItem('quiz_questions', JSON.stringify(finalQuestions))
+        } catch (e) {}
       })
       .catch(() => {})
     return () => {
       mounted = false
     }
   }, [])
+
+  // Restore quiz state from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('quiz_state')
+      if (saved) {
+        const state = JSON.parse(saved)
+        setIndex(state.index || 0)
+        setScore(state.score || 0)
+        setSelected(state.selected || null)
+        setReveal(state.reveal || false)
+      }
+    } catch (e) {
+      // silently ignore parse errors
+    }
+  }, [])
+
+  // Save quiz state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'quiz_state',
+        JSON.stringify({ index, score, selected, reveal })
+      )
+    } catch (e) {
+      // silently ignore storage errors
+    }
+  }, [index, score, selected, reveal])
 
   const q = questions[index] || { question: '', options: [], correctIndex: 0, category: '', difficulty: 'easy' }
 
@@ -72,6 +119,9 @@ export default function QuizPage() {
   const handleSelect = (i: number) => {
     if (reveal) return
     setSelected(i)
+    // automatically reveal the answer and update score when an option is selected
+    if (i === q.correctIndex) setScore((s) => s + 1)
+    setReveal(true)
   }
 
   const handleNext = () => {
@@ -93,6 +143,9 @@ export default function QuizPage() {
           'quiz_results',
           JSON.stringify({ score, total: questions.length })
         )
+        // clear quiz state and questions after completion
+        localStorage.removeItem('quiz_state')
+        localStorage.removeItem('quiz_questions')
       } catch (e) {}
       router.push('/quiz/results')
     } else {
@@ -105,6 +158,8 @@ export default function QuizPage() {
   const scorePercent = Math.round((score / Math.max(1, total)) * 100)
   const maxPossible = Math.round(((score + (total - (index + 1))) / total) * 100)
 
+  const topProgressPercent = total ? Math.round(((index + 1) / total) * 100) : 0
+
   const difficultyStars = (d?: string) => {
     const n = d === 'hard' ? 3 : d === 'medium' ? 2 : 1
     return Array.from({ length: n }).map((_, i) => (
@@ -113,50 +168,60 @@ export default function QuizPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
-      <div className="w-full max-w-2xl">
+    <>
+      <div className="fixed top-0 left-0 w-full z-50">
+        <div className="h-4 w-full bg-gray-50">
+          <div
+            className="h-full bg-[#6a7282] transition-all"
+            style={{ width: `${topProgressPercent}%` }}
+            role="progressbar"
+            aria-valuenow={topProgressPercent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      </div>
+
+      <main className="flex min-h-screen items-center mt-4 justify-center bg-gray-50 p-8">
+        <div className="w-full max-w-2xl">
+        
         <div className="rounded-xl bg-white p-8 shadow-lg">
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">Question {index + 1} of {total}</h2>
-                <div className="text-sm text-gray-600">{q.category}</div>
-                <div className="mt-2">{difficultyStars(q.difficulty)}</div>
+                <h2 className="text-3xl font-bold text-gray-800">Question {index + 1} of {total}</h2>
+                <div className="text-lg text-gray-600">{q.category}</div>
+                <div className="mt-2 text-xl">{difficultyStars(q.difficulty)}</div>
               </div>
-              <div className="text-sm text-gray-600">Score: {scorePercent}%</div>
+              
             </div>
           </header>
 
           <QuestionCard question={q} selected={selected} onSelect={handleSelect} reveal={reveal} />
 
-          <div className="mt-6 text-center">
-            {reveal ? (
+          <div className="mt-4 text-center">
+            {reveal && (
               <div>
                 <h3 className="mb-4 text-2xl font-bold text-gray-800">{selected === q.correctIndex ? 'Correct!' : 'Sorry!'}</h3>
                 <Button onClick={handleNext} className="bg-dark-100 text-gray-800">
                   {index + 1 >= total ? 'See Results' : 'Next Question'}
                 </Button>
               </div>
-            ) : (
-              <div>
-                <Button onClick={handleNext} disabled={selected === null} className="bg-gray-800">
-                  Check Answer
-                </Button>
-              </div>
             )}
           </div>
 
           <footer className="mt-8">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
               <div>Score: {scorePercent}%</div>
               <div>Max Score: {maxPossible}%</div>
             </div>
             <div className="h-3 w-full rounded bg-gray-200">
-              <div className="h-full bg-blue-500" style={{ width: `${scorePercent}%` }} />
+              <div className="h-full bg-[#1e2939]" style={{ width: `${scorePercent}%` }} />
             </div>
           </footer>
         </div>
       </div>
     </main>
+    </>
   )
 }
