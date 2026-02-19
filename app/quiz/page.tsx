@@ -1,8 +1,9 @@
 "use client"
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import QuestionCard from '@/components/quiz/QuestionCard'
+import ResultsCard from '@/components/quiz/ResultsCard'
 import TopProgressBar from '@/components/ui/TopProgressBar'
 import ScoreProgressBar from '@/components/ui/ScoreProgressBar'
 import type { RawQuestion } from '@/types/quiz'
@@ -10,22 +11,66 @@ import { decode, shuffle } from '@/utils/quiz'
 
 export default function QuizPage() {
   const router = useRouter()
-  const [questions, setQuestions] = useState<any[]>([])
-  const [index, setIndex] = useState(0)
-  const [selected, setSelected] = useState<number | null>(null)
-  const [score, setScore] = useState(0)
-  const [reveal, setReveal] = useState(false)
+
+  type State = {
+    questions: any[]
+    index: number
+    selected: number | null
+    score: number
+    reveal: boolean
+    isComplete: boolean
+  }
+
+  const initialState: State = {
+    questions: [],
+    index: 0,
+    selected: null,
+    score: 0,
+    reveal: false,
+    isComplete: false,
+  }
+
+  function reducer(state: State, action: any): State {
+    switch (action.type) {
+      case 'SET_QUESTIONS':
+        return { ...state, questions: action.payload }
+      case 'SET_INDEX':
+        return { ...state, index: action.payload, selected: null, reveal: false }
+      case 'SET_SELECTED':
+        return { ...state, selected: action.payload }
+      case 'INCREMENT_SCORE':
+        return { ...state, score: state.score + 1 }
+      case 'SET_REVEAL':
+        return { ...state, reveal: action.payload }
+      case 'SET_COMPLETE':
+        return { ...state, isComplete: action.payload }
+      case 'RESET':
+        return initialState
+      case 'LOAD_STATE':
+        return {
+          ...state,
+          index: action.payload.index ?? state.index,
+          score: action.payload.score ?? state.score,
+          selected: action.payload.selected ?? state.selected,
+          reveal: action.payload.reveal ?? state.reveal,
+        }
+      default:
+        return state
+    }
+  }
+
+  const [state, dispatch] = useReducer(reducer, initialState)
 
   useEffect(() => {
     let mounted = true
     const savedQuestions = localStorage.getItem('quiz_questions')
     if (savedQuestions) {
       const parsed = JSON.parse(savedQuestions)
-      if (mounted) setQuestions(parsed)
+      if (mounted) dispatch({ type: 'SET_QUESTIONS', payload: parsed })
       return
     }
-    
-    fetch('/data/questions.json')
+
+    fetch('/api/questions')
       .then((r) => r.json())
       .then((raw: RawQuestion[]) => {
         if (!mounted) return
@@ -46,7 +91,7 @@ export default function QuizPage() {
         const shuffledQuestions = shuffle(mapped)
         const limit = Math.min(20, shuffledQuestions.length)
         const finalQuestions = shuffledQuestions.slice(0, limit)
-        setQuestions(finalQuestions)
+        dispatch({ type: 'SET_QUESTIONS', payload: finalQuestions })
         try {
           localStorage.setItem('quiz_questions', JSON.stringify(finalQuestions))
         } catch (e) {}
@@ -60,54 +105,52 @@ export default function QuizPage() {
   useEffect(() => {
     const saved = localStorage.getItem('quiz_state')
     if (saved) {
-      const state = JSON.parse(saved)
-      setIndex(state.index || 0)
-      setScore(state.score || 0)
-      setSelected(state.selected || null)
-      setReveal(state.reveal || false)
+      try {
+        const s = JSON.parse(saved)
+        dispatch({ type: 'LOAD_STATE', payload: s })
+      } catch (e) {}
     }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(
-      'quiz_state',
-      JSON.stringify({ index, score, selected, reveal })
-    )
-  }, [index, score, selected, reveal])
+    const toSave = {
+      index: state.index,
+      score: state.score,
+      selected: state.selected,
+      reveal: state.reveal,
+    }
+    try {
+      localStorage.setItem('quiz_state', JSON.stringify(toSave))
+    } catch (e) {}
+  }, [state.index, state.score, state.selected, state.reveal])
+
+  const { questions, index, selected, score, reveal, isComplete } = state
 
   const q = questions[index] || { question: '', options: [], correctIndex: 0, category: '', difficulty: 'easy' }
 
-  useEffect(() => {
-    setSelected(null)
-    setReveal(false)
-  }, [index])
-
   const handleSelect = (i: number) => {
     if (reveal) return
-    setSelected(i)
-    if (i === q.correctIndex) setScore((s) => s + 1)
-    setReveal(true)
+    dispatch({ type: 'SET_SELECTED', payload: i })
+    if (i === q.correctIndex) dispatch({ type: 'INCREMENT_SCORE' })
+    dispatch({ type: 'SET_REVEAL', payload: true })
   }
 
   const handleNext = () => {
     if (!reveal) {
       if (selected === null) return
-      if (selected === q.correctIndex) setScore((s) => s + 1)
-      setReveal(true)
+      if (selected === q.correctIndex) dispatch({ type: 'INCREMENT_SCORE' })
+      dispatch({ type: 'SET_REVEAL', payload: true })
       return
     }
 
     const next = index + 1
     if (next >= questions.length) {
-      localStorage.setItem(
-        'quiz_results',
-        JSON.stringify({ score, total: questions.length })
-      )
-      localStorage.removeItem('quiz_state')
-      localStorage.removeItem('quiz_questions')
-      router.push('/quiz/results')
+      dispatch({ type: 'SET_COMPLETE', payload: true })
+      try {
+        localStorage.setItem('quiz_results', JSON.stringify({ score, total: questions.length }))
+      } catch (e) {}
     } else {
-      setIndex(next)
+      dispatch({ type: 'SET_INDEX', payload: next })
     }
   }
 
@@ -130,48 +173,66 @@ export default function QuizPage() {
     ))
   }
 
+  const getFeedbackTitle = () => {
+    return selected === q.correctIndex ? 'Correct!' : 'Sorry!'
+  }
+
+  const getNextButtonLabel = () => {
+    return index + 1 >= total ? 'See Results' : 'Next Question'
+  }
+
   return (
     <>
-      <TopProgressBar percent={topProgressPercent} />
+      {!isComplete && <TopProgressBar percent={topProgressPercent} />}
 
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
-          <div className="rounded-xl bg-white p-8 shadow-xl">
-          <header className="mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-700">Question {index + 1} of {total}</h2>
-                <div className="text-lg text-gray-600">{q.category}</div>
-                <div className="text-xl">{difficultyStars(q.difficulty)}</div>
+          {isComplete ? (
+            <ResultsCard onGoHome={() => {
+              dispatch({ type: 'RESET' })
+              localStorage.removeItem('quiz_state')
+              localStorage.removeItem('quiz_questions')
+              localStorage.removeItem('quiz_results')
+              router.push('/')
+            }} />
+          ) : (
+            <div className="rounded-xl bg-white p-8 shadow-xl">
+              <header className="mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-3xl font-bold text-gray-700">Question {index + 1} of {total}</h2>
+                    <div className="text-lg text-gray-600">{q.category}</div>
+                    <div className="text-xl">{difficultyStars(q.difficulty)}</div>
+                  </div>
+                </div>
+              </header>
+
+              <QuestionCard question={q} selected={selected} onSelect={handleSelect} reveal={reveal} />
+
+              <div className="mt-4 text-center">
+                {reveal && (
+                  <div>
+                    <h3 className="mb-4 text-2xl font-bold text-gray-800">{getFeedbackTitle()}</h3>
+                    <Button onClick={handleNext} className="bg-dark-100 text-gray-800">
+                      {getNextButtonLabel()}
+                    </Button>
+                  </div>
+                )}
               </div>
+
+              <footer className="mt-16">
+                <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
+                  <div>Score: {scorePercent}%</div>
+                  <div>Max Score: {maxPossible}%</div>
+                </div>
+                <ScoreProgressBar
+                  scorePercent={scorePercent}
+                  wrongPercent={wrongPercent}
+                  remainingPercent={remainingPercent}
+                />
+              </footer>
             </div>
-          </header>
-
-          <QuestionCard question={q} selected={selected} onSelect={handleSelect} reveal={reveal} />
-
-          <div className="mt-4 text-center">
-            {reveal && (
-              <div>
-                <h3 className="mb-4 text-2xl font-bold text-gray-800">{selected === q.correctIndex ? 'Correct!' : 'Sorry!'}</h3>
-                <Button onClick={handleNext} className="bg-dark-100 text-gray-800">
-                  {index + 1 >= total ? 'See Results' : 'Next Question'}
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <footer className="mt-16">
-            <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
-              <div>Score: {scorePercent}%</div>
-              <div>Max Score: {maxPossible}%</div>
-            </div>
-            <ScoreProgressBar
-              scorePercent={scorePercent}
-              wrongPercent={wrongPercent}
-              remainingPercent={remainingPercent}
-            />
-          </footer>
-          </div>
+          )}
         </div>
       </main>
     </>
