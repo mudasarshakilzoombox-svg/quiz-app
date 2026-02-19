@@ -153,10 +153,16 @@ export default function QuizPage() {
     }
   }
 
-  const answered = index // number of questions already shown before current
-  const total = questions.length // FIXED: Changed from setQuestions.length to questions.length
-  const scorePercent = Math.round((score / Math.max(1, total)) * 100)
-  const maxPossible = Math.round(((score + (total - (index + 1))) / total) * 100)
+  const total = questions.length
+  // number of questions already answered (include current when reveal is true)
+  const answeredCount = reveal ? index + 1 : index
+  const wrongCount = Math.max(0, answeredCount - score)
+
+  const scorePercent = total ? Math.round((score / total) * 100) : 0
+  const wrongPercent = total ? Math.round((wrongCount / total) * 100) : 0
+  const remainingPercent = Math.max(0, 100 - scorePercent - wrongPercent)
+
+  const maxPossible = total ? Math.round(((score + (total - (index + 1))) / total) * 100) : 0
 
   const topProgressPercent = total ? Math.round(((index + 1) / total) * 100) : 0
 
@@ -215,8 +221,35 @@ export default function QuizPage() {
               <div>Score: {scorePercent}%</div>
               <div>Max Score: {maxPossible}%</div>
             </div>
-            <div className="h-8 w-full rounded bg-gray-200">
-              <div className="h-full bg-[#1e2939]" style={{ width: `${scorePercent}%` }} />
+            <div className="h-8 w-full rounded-md bg-gray-200 overflow-hidden border border-gray-200">
+              <div className="flex h-full w-full">
+                {/* Correct answers segment */}
+                <div
+                  className="h-full"
+                  style={{
+                    width: `${scorePercent}%`,
+                    background: '#0f1724'
+                  }}
+                />
+
+                {/* Wrong answers segment */}
+                <div
+                  className="h-full"
+                  style={{
+                    width: `${wrongPercent}%`,
+                    background: '#9aa3b2'
+                  }}
+                />
+
+                {/* Remaining segment */}
+                <div
+                  className="h-full"
+                  style={{
+                    width: `${remainingPercent}%`,
+                    background: '#f3f4f6'
+                  }}
+                />
+              </div>
             </div>
           </footer>
         </div>
