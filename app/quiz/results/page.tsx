@@ -9,15 +9,11 @@ export default function ResultsPage() {
   const [total, setTotal] = useState<number | null>(null)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('quiz_results')
-      if (raw) {
-        const obj = JSON.parse(raw)
-        setScore(Number(obj.score))
-        setTotal(Number(obj.total))
-      }
-    } catch (e) {
-      // ignore
+    const raw = localStorage.getItem('quiz_results')
+    if (raw) {
+      const obj = JSON.parse(raw)
+      setScore(Number(obj.score))
+      setTotal(Number(obj.total))
     }
   }, [])
 

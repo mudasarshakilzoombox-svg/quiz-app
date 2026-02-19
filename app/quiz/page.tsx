@@ -1,27 +1,10 @@
 "use client"
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import QuestionCard from '@/components/quiz/QuestionCard'
-
-const decode = (s: string) => {
-  try {
-    return decodeURIComponent(s)
-  } catch (e) {
-    return s
-  }
-}
-
-const shuffle = <T,>(arr: T[]) => {
-  const a = arr.slice()
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
-type RawQ = any
+import type { RawQuestion } from '@/types/quiz'
+import { decode, shuffle } from '@/utils/quiz'
 
 export default function QuizPage() {
   const router = useRouter()
@@ -33,23 +16,16 @@ export default function QuizPage() {
 
   useEffect(() => {
     let mounted = true
-    
-    // Check if questions are already saved from a previous session
-    try {
-      const savedQuestions = localStorage.getItem('quiz_questions')
-      if (savedQuestions) {
-        const parsed = JSON.parse(savedQuestions)
-        if (mounted) setQuestions(parsed)
-        return
-      }
-    } catch (e) {
-      // continue with fetch if parse fails
+    const savedQuestions = localStorage.getItem('quiz_questions')
+    if (savedQuestions) {
+      const parsed = JSON.parse(savedQuestions)
+      if (mounted) setQuestions(parsed)
+      return
     }
     
-    // Only fetch and shuffle if no saved questions exist
     fetch('/data/questions.json')
       .then((r) => r.json())
-      .then((raw: RawQ[]) => {
+      .then((raw: RawQuestion[]) => {
         if (!mounted) return
         const mapped = raw.map((q, idx) => {
           const correct = decode(q.correct_answer || '')
@@ -65,12 +41,10 @@ export default function QuizPage() {
             difficulty: q.difficulty,
           }
         })
-        // shuffle the questions themselves and limit to 20 unique questions
         const shuffledQuestions = shuffle(mapped)
         const limit = Math.min(20, shuffledQuestions.length)
         const finalQuestions = shuffledQuestions.slice(0, limit)
         setQuestions(finalQuestions)
-        // Save questions for future sessions
         try {
           localStorage.setItem('quiz_questions', JSON.stringify(finalQuestions))
         } catch (e) {}
@@ -81,32 +55,22 @@ export default function QuizPage() {
     }
   }, [])
 
-  // Restore quiz state from localStorage on mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('quiz_state')
-      if (saved) {
-        const state = JSON.parse(saved)
-        setIndex(state.index || 0)
-        setScore(state.score || 0)
-        setSelected(state.selected || null)
-        setReveal(state.reveal || false)
-      }
-    } catch (e) {
-      // silently ignore parse errors
+    const saved = localStorage.getItem('quiz_state')
+    if (saved) {
+      const state = JSON.parse(saved)
+      setIndex(state.index || 0)
+      setScore(state.score || 0)
+      setSelected(state.selected || null)
+      setReveal(state.reveal || false)
     }
   }, [])
 
-  // Save quiz state to localStorage whenever it changes
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        'quiz_state',
-        JSON.stringify({ index, score, selected, reveal })
-      )
-    } catch (e) {
-      // silently ignore storage errors
-    }
+    localStorage.setItem(
+      'quiz_state',
+      JSON.stringify({ index, score, selected, reveal })
+    )
   }, [index, score, selected, reveal])
 
   const q = questions[index] || { question: '', options: [], correctIndex: 0, category: '', difficulty: 'easy' }
@@ -119,17 +83,13 @@ export default function QuizPage() {
   const handleSelect = (i: number) => {
     if (reveal) return
     setSelected(i)
-    // automatically reveal the answer and update score when an option is selected
     if (i === q.correctIndex) setScore((s) => s + 1)
     setReveal(true)
   }
 
   const handleNext = () => {
-    // ensure user selected before moving on
     if (!reveal) {
       if (selected === null) return
-
-      // reveal and update score
       if (selected === q.correctIndex) setScore((s) => s + 1)
       setReveal(true)
       return
@@ -137,16 +97,12 @@ export default function QuizPage() {
 
     const next = index + 1
     if (next >= questions.length) {
-      // store results and navigate
-      try {
-        localStorage.setItem(
-          'quiz_results',
-          JSON.stringify({ score, total: questions.length })
-        )
-        // clear quiz state and questions after completion
-        localStorage.removeItem('quiz_state')
-        localStorage.removeItem('quiz_questions')
-      } catch (e) {}
+      localStorage.setItem(
+        'quiz_results',
+        JSON.stringify({ score, total: questions.length })
+      )
+      localStorage.removeItem('quiz_state')
+      localStorage.removeItem('quiz_questions')
       router.push('/quiz/results')
     } else {
       setIndex(next)
@@ -154,7 +110,6 @@ export default function QuizPage() {
   }
 
   const total = questions.length
-  // number of questions already answered (include current when reveal is true)
   const answeredCount = reveal ? index + 1 : index
   const wrongCount = Math.max(0, answeredCount - score)
 
@@ -190,8 +145,7 @@ export default function QuizPage() {
 
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
-        
-        <div className="rounded-xl bg-white p-8 shadow-xl">
+          <div className="rounded-xl bg-white p-8 shadow-xl">
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -199,7 +153,6 @@ export default function QuizPage() {
                 <div className="text-lg text-gray-600">{q.category}</div>
                 <div className="text-xl">{difficultyStars(q.difficulty)}</div>
               </div>
-              
             </div>
           </header>
 
@@ -223,7 +176,6 @@ export default function QuizPage() {
             </div>
             <div className="h-8 w-full rounded-md bg-gray-200 overflow-hidden border border-gray-200">
               <div className="flex h-full w-full">
-                {/* Correct answers segment */}
                 <div
                   className="h-full"
                   style={{
@@ -231,8 +183,6 @@ export default function QuizPage() {
                     background: '#0f1724'
                   }}
                 />
-
-                {/* Wrong answers segment */}
                 <div
                   className="h-full"
                   style={{
@@ -241,7 +191,6 @@ export default function QuizPage() {
                   }}
                 />
 
-                {/* Remaining segment */}
                 <div
                   className="h-full"
                   style={{
@@ -252,9 +201,9 @@ export default function QuizPage() {
               </div>
             </div>
           </footer>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
     </>
   )
 }

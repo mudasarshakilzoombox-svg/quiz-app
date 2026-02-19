@@ -1,6 +1,5 @@
 import StartButton from '@/components/ui/StartButton'
 
-// Constants
 const APP_TITLE: string = 'Zoombox Quiz Challenge'
 const COMPANY_NAME: string = 'Zoom Box'
 
@@ -9,7 +8,6 @@ export const metadata = {
   description: 'Test your knowledge with Zoombox Quiz Challenge',
 }
 
-// Exports
 export default function HomePage() {
 
   return (

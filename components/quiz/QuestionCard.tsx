@@ -1,15 +1,9 @@
 "use client"
 import React from 'react'
-
-type Question = {
-  id: number
-  question: string
-  options: string[]
-  correctIndex: number
-}
+import type { QuizQuestion } from '@/types/quiz'
 
 type Props = {
-  question: Question
+  question: QuizQuestion
   selected: number | null
   onSelect: (index: number) => void
   reveal?: boolean
@@ -27,7 +21,7 @@ export default function QuestionCard({ question, selected, onSelect, reveal = fa
           const isWrong = reveal && isSelected && selected !== question.correctIndex
 
           let base = 'w-full rounded-lg border px-6 py-4 text-left text-lg font-medium transition-colors duration-150'
-          // default option appearance: light gray background, darker border
+          
           let color = 'bg-[#e6e6e6] border-gray-400 text-gray-900 hover:bg-[#bdbdbd] cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed'
           if (isSelected) color = 'bg-gray-900 text-white border-gray-900 cursor-default'
           if (isCorrect) color = 'bg-green-500 text-white border-green-600 cursor-default'
