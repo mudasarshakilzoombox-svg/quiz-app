@@ -9,7 +9,7 @@ type Props = {
 
 export default function ScoreProgressBar({ scorePercent, wrongPercent, remainingPercent }: Props) {
   return (
-    <div className="h-8 mt-4 w-full rounded-md bg-gray-200 overflow-hidden border border-gray-200">
+    <div className="h-8 mt-4 w-full rounded-md bg-gray-200 overflow-hidden border border-gray-800">
       <div className="flex h-full w-full">
         <div
           className="h-full"
