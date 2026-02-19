@@ -160,7 +160,7 @@ export default function QuizPage() {
             )}
           </div>
 
-          <footer className="mt-8">
+          <footer className="mt-16">
             <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
               <div>Score: {scorePercent}%</div>
               <div>Max Score: {maxPossible}%</div>
