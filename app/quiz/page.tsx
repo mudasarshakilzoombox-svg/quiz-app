@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import QuestionCard from '@/components/quiz/QuestionCard'
+import TopProgressBar from '@/components/ui/TopProgressBar'
+import ScoreProgressBar from '@/components/ui/ScoreProgressBar'
 import type { RawQuestion } from '@/types/quiz'
 import { decode, shuffle } from '@/utils/quiz'
 
@@ -130,18 +132,7 @@ export default function QuizPage() {
 
   return (
     <>
-      <div className="fixed top-0 left-0 w-full z-50">
-        <div className="h-4 w-full bg-gray-50">
-          <div
-            className="h-full bg-[#6a7282] transition-all"
-            style={{ width: `${topProgressPercent}%` }}
-            role="progressbar"
-            aria-valuenow={topProgressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-        </div>
-      </div>
+      <TopProgressBar percent={topProgressPercent} />
 
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
@@ -174,32 +165,11 @@ export default function QuizPage() {
               <div>Score: {scorePercent}%</div>
               <div>Max Score: {maxPossible}%</div>
             </div>
-            <div className="h-8 w-full rounded-md bg-gray-200 overflow-hidden border border-gray-200">
-              <div className="flex h-full w-full">
-                <div
-                  className="h-full"
-                  style={{
-                    width: `${scorePercent}%`,
-                    background: '#0f1724'
-                  }}
-                />
-                <div
-                  className="h-full"
-                  style={{
-                    width: `${wrongPercent}%`,
-                    background: '#9aa3b2'
-                  }}
-                />
-
-                <div
-                  className="h-full"
-                  style={{
-                    width: `${remainingPercent}%`,
-                    background: '#f3f4f6'
-                  }}
-                />
-              </div>
-            </div>
+            <ScoreProgressBar
+              scorePercent={scorePercent}
+              wrongPercent={wrongPercent}
+              remainingPercent={remainingPercent}
+            />
           </footer>
           </div>
         </div>
