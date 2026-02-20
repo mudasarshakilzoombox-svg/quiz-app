@@ -4,32 +4,45 @@ import React from 'react'
 type Props = {
   scorePercent: number
   wrongPercent: number
-  remainingPercent: number
+  maxPossiblePercent: number
+  remainingFromMaxPercent: number
 }
 
-export default function ScoreProgressBar({ scorePercent, wrongPercent, remainingPercent }: Props) {
+export default function ScoreProgressBar({ 
+  scorePercent, 
+  wrongPercent, 
+  maxPossiblePercent,
+  remainingFromMaxPercent 
+}: Props) {
   return (
     <div className="h-8 mt-4 w-full rounded-md bg-gray-200 overflow-hidden border border-gray-800">
       <div className="flex h-full w-full">
         <div
-          className="h-full"
+          className="h-full transition-all duration-300"
           style={{
             width: `${scorePercent}%`,
-            background: '#0f1724'
+            backgroundColor: '#1e293b'
           }}
         />
         <div
-          className="h-full"
+          className="h-full transition-all duration-300"
           style={{
             width: `${wrongPercent}%`,
-            background: '#9aa3b2'
+            backgroundColor: '#94a3b8'
           }}
         />
         <div
-          className="h-full"
+          className="h-full transition-all duration-300"
           style={{
-            width: `${remainingPercent}%`,
-            background: '#f3f4f6'
+            width: `${remainingFromMaxPercent}%`,
+            backgroundColor: '#e5e7eb'
+          }}
+        />
+        <div
+          className="h-full transition-all duration-300"
+          style={{
+            width: `${Math.max(0, 100 - maxPossiblePercent)}%`,
+            backgroundColor: '#ffff'
           }}
         />
       </div>

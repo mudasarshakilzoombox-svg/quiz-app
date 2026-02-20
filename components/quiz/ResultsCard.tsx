@@ -34,7 +34,7 @@ export default function ResultsCard({ onGoHome }: Props) {
           <p className="mb-6 text-2xl font-semibold text-gray-600">You answered {score} out of {total} questions correctly.</p>
 
           {score < 10 ? (
-            <p className="mb-6 text-lg text-red-600">😞 Sorry, you failed — try again.</p>
+            <p className="mb-6 text-lg text-red-600">Sorry! You Failed. Better luck next time 😊</p>
           ) : (
             <p className="mb-6 text-lg text-green-600">🎉 Congratulations! You Passed the Quiz!</p>
           )}

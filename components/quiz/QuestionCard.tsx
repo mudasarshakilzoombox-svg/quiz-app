@@ -14,7 +14,7 @@ export default function QuestionCard({ question, selected, onSelect, reveal = fa
     <div className="w-full rounded-2xl bg-white pt-4">
       <h2 className="mb-6 text-2xl text-gray-800">{question.question}</h2>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid mt-8 grid-cols-1 gap-4 sm:grid-cols-2">
         {question.options.map((opt, idx) => {
           const isSelected = selected === idx
           const isCorrect = reveal && idx === question.correctIndex

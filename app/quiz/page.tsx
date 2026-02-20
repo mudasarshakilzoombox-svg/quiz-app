@@ -160,9 +160,8 @@ export default function QuizPage() {
 
   const scorePercent = total ? Math.round((score / total) * 100) : 0
   const wrongPercent = total ? Math.round((wrongCount / total) * 100) : 0
-  const remainingPercent = Math.max(0, 100 - scorePercent - wrongPercent)
-
-  const maxPossible = total ? Math.round(((score + (total - (index + 1))) / total) * 100) : 0
+  const maxPossiblePercent = total ? Math.round(((score + (total - (index + 1))) / total) * 100) : 0
+  const remainingFromMaxPercent = Math.max(0, maxPossiblePercent - scorePercent)
 
   const topProgressPercent = total ? Math.round(((index + 1) / total) * 100) : 0
 
@@ -212,8 +211,8 @@ export default function QuizPage() {
               <div className="mt-4 text-center">
                 {reveal && (
                   <div>
-                    <h3 className="mb-4 text-2xl font-bold text-gray-800">{getFeedbackTitle()}</h3>
-                    <Button onClick={handleNext} className="bg-dark-100 text-gray-800">
+                    <h3 className="mb-8 mt-12 text-2xl font-bold text-gray-800">{getFeedbackTitle()}</h3>
+                    <Button onClick={handleNext} className="text-base md:text-lg lg:text-xl font-[400] px-4 py-2 bg-[#dcdedc] border border-black rounded-md hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]">
                       {getNextButtonLabel()}
                     </Button>
                   </div>
@@ -223,12 +222,13 @@ export default function QuizPage() {
               <footer className="mt-16">
                 <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
                   <div>Score: {scorePercent}%</div>
-                  <div>Max Score: {maxPossible}%</div>
+                  <div>Max Score: {maxPossiblePercent}%</div>
                 </div>
                 <ScoreProgressBar
                   scorePercent={scorePercent}
                   wrongPercent={wrongPercent}
-                  remainingPercent={remainingPercent}
+                  maxPossiblePercent={maxPossiblePercent}
+                  remainingFromMaxPercent={remainingFromMaxPercent}
                 />
               </footer>
             </div>
