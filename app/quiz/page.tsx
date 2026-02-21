@@ -1,218 +1,80 @@
 "use client"
-import React, { useEffect, useReducer } from 'react'
+import React from 'react'
 import { useRouter } from 'next/navigation'
 import Button from '@/components/ui/Button'
 import QuestionCard from '@/components/quiz/QuestionCard'
 import ResultsCard from '@/components/quiz/ResultsCard'
 import TopProgressBar from '@/components/ui/TopProgressBar'
 import ScoreProgressBar from '@/components/ui/ScoreProgressBar'
-import type { RawQuestion } from '@/types/quiz'
-import { decode, shuffle } from '@/utils/quiz'
+import DifficultyStars from '@/components/quiz/DifficultyStars'
+import { useQuiz } from '@/hooks'
 
 export default function QuizPage() {
   const router = useRouter()
+  const {
+    state,
+    currentQuestion,
+    totalQuestions,
+    scorePercentage,
+    wrongAnswersPercentage,
+    maxPossibleScorePercentage,
+    remainingFromMaxPercentage,
+    topProgressPercentage,
+    getFeedbackTitle,
+    getNextButtonLabel,
+    handleOptionSelect,
+    handleNextQuestion,
+    resetQuiz
+  } = useQuiz()
 
-  type State = {
-    questions: any[]
-    index: number
-    selected: number | null
-    score: number
-    reveal: boolean
-    isComplete: boolean
-  }
-
-  const initialState: State = {
-    questions: [],
-    index: 0,
-    selected: null,
-    score: 0,
-    reveal: false,
-    isComplete: false,
-  }
-
-  function reducer(state: State, action: any): State {
-    switch (action.type) {
-      case 'SET_QUESTIONS':
-        return { ...state, questions: action.payload }
-      case 'SET_INDEX':
-        return { ...state, index: action.payload, selected: null, reveal: false }
-      case 'SET_SELECTED':
-        return { ...state, selected: action.payload }
-      case 'INCREMENT_SCORE':
-        return { ...state, score: state.score + 1 }
-      case 'SET_REVEAL':
-        return { ...state, reveal: action.payload }
-      case 'SET_COMPLETE':
-        return { ...state, isComplete: action.payload }
-      case 'RESET':
-        return initialState
-      case 'LOAD_STATE':
-        return {
-          ...state,
-          index: action.payload.index ?? state.index,
-          score: action.payload.score ?? state.score,
-          selected: action.payload.selected ?? state.selected,
-          reveal: action.payload.reveal ?? state.reveal,
-        }
-      default:
-        return state
-    }
-  }
-
-  const [state, dispatch] = useReducer(reducer, initialState)
-
-  useEffect(() => {
-    let mounted = true
-    const savedQuestions = localStorage.getItem('quiz_questions')
-    if (savedQuestions) {
-      const parsed = JSON.parse(savedQuestions)
-      if (mounted) dispatch({ type: 'SET_QUESTIONS', payload: parsed })
-      return
-    }
-
-    fetch('/api/questions')
-      .then((r) => r.json())
-      .then((raw: RawQuestion[]) => {
-        if (!mounted) return
-        const mapped = raw.map((q, idx) => {
-          const correct = decode(q.correct_answer || '')
-          const incorrect = (q.incorrect_answers || []).map((x: string) => decode(x))
-          const opts = shuffle([...incorrect, correct])
-          const correctIndex = opts.findIndex((o) => o === correct)
-          return {
-            id: idx + 1,
-            question: decode(q.question || ''),
-            options: opts,
-            correctIndex,
-            category: q.category ? decode(q.category) : undefined,
-            difficulty: q.difficulty,
-          }
-        })
-        const shuffledQuestions = shuffle(mapped)
-        const limit = Math.min(20, shuffledQuestions.length)
-        const finalQuestions = shuffledQuestions.slice(0, limit)
-        dispatch({ type: 'SET_QUESTIONS', payload: finalQuestions })
-        try {
-          localStorage.setItem('quiz_questions', JSON.stringify(finalQuestions))
-        } catch (e) {}
-      })
-      .catch(() => {})
-    return () => {
-      mounted = false
-    }
-  }, [])
-
-  useEffect(() => {
-    const saved = localStorage.getItem('quiz_state')
-    if (saved) {
-      try {
-        const s = JSON.parse(saved)
-        dispatch({ type: 'LOAD_STATE', payload: s })
-      } catch (e) {}
-    }
-  }, [])
-
-  useEffect(() => {
-    const toSave = {
-      index: state.index,
-      score: state.score,
-      selected: state.selected,
-      reveal: state.reveal,
-    }
-    try {
-      localStorage.setItem('quiz_state', JSON.stringify(toSave))
-    } catch (e) {}
-  }, [state.index, state.score, state.selected, state.reveal])
-
-  const { questions, index, selected, score, reveal, isComplete } = state
-
-  const q = questions[index] || { question: '', options: [], correctIndex: 0, category: '', difficulty: 'easy' }
-
-  const handleSelect = (i: number) => {
-    if (reveal) return
-    dispatch({ type: 'SET_SELECTED', payload: i })
-    if (i === q.correctIndex) dispatch({ type: 'INCREMENT_SCORE' })
-    dispatch({ type: 'SET_REVEAL', payload: true })
-  }
-
-  const handleNext = () => {
-    if (!reveal) {
-      if (selected === null) return
-      if (selected === q.correctIndex) dispatch({ type: 'INCREMENT_SCORE' })
-      dispatch({ type: 'SET_REVEAL', payload: true })
-      return
-    }
-
-    const next = index + 1
-    if (next >= questions.length) {
-      dispatch({ type: 'SET_COMPLETE', payload: true })
-      try {
-        localStorage.setItem('quiz_results', JSON.stringify({ score, total: questions.length }))
-      } catch (e) {}
-    } else {
-      dispatch({ type: 'SET_INDEX', payload: next })
-    }
-  }
-
-  const total = questions.length
-  const answeredCount = reveal ? index + 1 : index
-  const wrongCount = Math.max(0, answeredCount - score)
-
-  const scorePercent = total ? Math.round((score / total) * 100) : 0
-  const wrongPercent = total ? Math.round((wrongCount / total) * 100) : 0
-  const maxPossiblePercent = total ? Math.round(((score + (total - (index + 1))) / total) * 100) : 0
-  const remainingFromMaxPercent = Math.max(0, maxPossiblePercent - scorePercent)
-
-  const topProgressPercent = total ? Math.round(((index + 1) / total) * 100) : 0
-
-  const difficultyStars = (d?: string) => {
-    const n = d === 'hard' ? 3 : d === 'medium' ? 2 : 1
-    return Array.from({ length: n }).map((_, i) => (
-      <span key={i} className="inline-block text-black mr-1">★</span>
-    ))
-  }
-
-  const getFeedbackTitle = () => {
-    return selected === q.correctIndex ? 'Correct!' : 'Sorry!'
-  }
-
-  const getNextButtonLabel = () => {
-    return index + 1 >= total ? 'See Results' : 'Next Question'
-  }
+  const { isQuizComplete, selectedOptionIndex, isAnswerRevealed } = state
 
   return (
     <>
-      {!isComplete && <TopProgressBar percent={topProgressPercent} />}
+      {!isQuizComplete && <TopProgressBar percent={topProgressPercentage} />}
 
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
-          {isComplete ? (
-            <ResultsCard onGoHome={() => {
-              dispatch({ type: 'RESET' })
-              localStorage.removeItem('quiz_state')
-              localStorage.removeItem('quiz_questions')
-              localStorage.removeItem('quiz_results')
-              router.push('/')
-            }} />
+          {isQuizComplete ? (
+            <ResultsCard 
+              score={state.correctAnswersCount}
+              total={totalQuestions}
+              onRetake={() => {
+                resetQuiz()
+                router.push('/quiz')
+              }}
+              onHome={() => router.push('/')}
+            />
           ) : (
-            <div className="rounded-xl bg-white p-8 shadow-xl">
+            <div className="rounded-xl bg-white p-8 shadow-xl mt-5">
               <header className="mb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-3xl font-bold text-gray-700">Question {index + 1} of {total}</h2>
-                    <div className="text-lg text-gray-600">{q.category}</div>
-                    <div className="text-xl">{difficultyStars(q.difficulty)}</div>
+                    <h2 className="text-3xl font-bold text-gray-700">
+                      Question {state.currentQuestionIndex + 1} of {totalQuestions}
+                    </h2>
+                    <div className="text-lg text-gray-600">Entertainment: {currentQuestion.category}</div>
+                    <DifficultyStars difficulty={currentQuestion.difficulty} />
                   </div>
                 </div>
               </header>
 
-              <QuestionCard question={q} selected={selected} onSelect={handleSelect} reveal={reveal} />
+              <QuestionCard 
+                question={currentQuestion} 
+                selectedOptionIndex={selectedOptionIndex} 
+                onOptionSelect={handleOptionSelect} 
+                isAnswerRevealed={isAnswerRevealed} 
+              />
 
               <div className="mt-4 text-center">
-                {reveal && (
+                {isAnswerRevealed && (
                   <div>
                     <h3 className="mb-8 mt-12 text-2xl font-bold text-gray-800">{getFeedbackTitle()}</h3>
-                    <Button onClick={handleNext} className="text-base md:text-lg lg:text-xl font-[400] px-4 py-2 bg-[#dcdedc] border border-black rounded-md hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]">
+                    <Button 
+                      onClick={handleNextQuestion} 
+                      size="lg"
+                      className="text-base md:text-lg lg:text-xl font-[400]  px-4 py-2 bg-[#dcdedc] border border-black rounded-md  hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]"
+                    >
                       {getNextButtonLabel()}
                     </Button>
                   </div>
@@ -221,14 +83,14 @@ export default function QuizPage() {
 
               <footer className="mt-16">
                 <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
-                  <div>Score: {scorePercent}%</div>
-                  <div>Max Score: {maxPossiblePercent}%</div>
+                  <div>Score: {scorePercentage}%</div>
+                  <div>Max Score: {maxPossibleScorePercentage}%</div>
                 </div>
                 <ScoreProgressBar
-                  scorePercent={scorePercent}
-                  wrongPercent={wrongPercent}
-                  maxPossiblePercent={maxPossiblePercent}
-                  remainingFromMaxPercent={remainingFromMaxPercent}
+                  scorePercent={scorePercentage}
+                  wrongPercent={wrongAnswersPercentage}
+                  maxPossiblePercent={maxPossibleScorePercentage}
+                  remainingFromMaxPercent={remainingFromMaxPercentage}
                 />
               </footer>
             </div>

@@ -1,6 +1,6 @@
 [
   {
-    "category": "Entertainment%3A%20Video%20Games",
+    "category": "Video Games",
     "type": "multiple",
     "difficulty": "hard",
     "question": "What%20was%20the%20name%20of%20the%20hero%20in%20the%2080s%20animated%20video%20game%20%27Dragon%27s%20Lair%27%3F",
@@ -24,7 +24,7 @@
     ]
   },
   {
-    "category": "Entertainment%3A%20Books",
+    "category": "Books",
     "type": "multiple",
     "difficulty": "hard",
     "question": "What%20is%20Ron%20Weasley%27s%20middle%20name%3F",
@@ -32,7 +32,7 @@
     "incorrect_answers": ["Arthur", "John", "Dominic"]
   },
   {
-    "category": "Entertainment%3A%20Comics",
+    "category": "Comics",
     "type": "multiple",
     "difficulty": "easy",
     "question": "Who%20is%20the%20creator%20of%20the%20comic%20series%20%22The%20Walking%20Dead%22%3F",
@@ -44,7 +44,7 @@
     ]
   },
   {
-    "category": "Entertainment%3A%20Board%20Games",
+    "category": "Board Games",
     "type": "multiple",
     "difficulty": "medium",
     "question": "At%20the%20start%20of%20a%20standard%20game%20of%20the%20Monopoly%2C%20if%20you%20throw%20a%20double%20six%2C%20which%20square%20would%20you%20land%20on%3F",
@@ -76,7 +76,7 @@
     "incorrect_answers": ["True"]
   },
   {
-    "category": "General%20Knowledge",
+    "category": "General Knowledge",
     "type": "multiple",
     "difficulty": "medium",
     "question": "In%202013%20how%20much%20money%20was%20lost%20by%20Nigerian%20scams%3F",
@@ -96,7 +96,7 @@
     "incorrect_answers": ["50", "60", "54"]
   },
   {
-    "category": "Entertainment%3A%20Video%20Games",
+    "category": "Video Games",
     "type": "multiple",
     "difficulty": "hard",
     "question": "In%20World%20of%20Warcraft%20lore%2C%20who%20organized%20the%20creation%20of%20the%20Paladins%3F",
@@ -108,7 +108,7 @@
     ]
   },
   {
-    "category": "Entertainment%3A%20Video%20Games",
+    "category": "Video Games",
     "type": "boolean",
     "difficulty": "medium",
     "question": "In%20the%20game%20%22Subnautica%22%2C%20a%20%22Cave%20Crawler%22%20will%20attack%20you.",
@@ -116,7 +116,7 @@
     "incorrect_answers": ["False"]
   },
   {
-    "category": "Entertainment%3A%20Japanese%20Anime%20%26%20Manga",
+    "category": "Japanese Anime & Manga",
     "type": "multiple",
     "difficulty": "medium",
     "question": "What%20is%20the%20name%20of%20the%20device%20that%20allows%20for%20infinite%20energy%20in%20the%20anime%20%22Dimension%20W%22%3F",
@@ -124,7 +124,7 @@
     "incorrect_answers": ["Wires", "Collectors", "Tesla"]
   },
   {
-    "category": "Entertainment%3A%20Video%20Games",
+    "category": "Video Games",
     "type": "multiple",
     "difficulty": "medium",
     "question": "What%20is%20the%20name%20of%20Cream%20the%20Rabbit%27s%20mom%20in%20the%20%22Sonic%20the%20Hedgehog%22%20series%3F",
@@ -144,7 +144,7 @@
     ]
   },
   {
-    "category": "Entertainment%3A%20Television",
+    "category": "Television",
     "type": "multiple",
     "difficulty": "hard",
     "question": "Which%20of%20these%20voices%20wasn%27t%20a%20choice%20for%20the%20House%20AI%20in%20%22The%20Simpsons%20Treehouse%20of%20Horror%22%20short%2C%20House%20of%20Whacks%3F",
@@ -156,7 +156,7 @@
     ]
   },
   {
-    "category": "Entertainment%3A%20Music",
+    "category": "Music",
     "type": "multiple",
     "difficulty": "medium",
     "question": "From%20which%20album%20is%20the%20Gorillaz%20song%2C%20%22On%20Melancholy%20Hill%22%20featured%20in%3F",
@@ -164,7 +164,7 @@
     "incorrect_answers": ["Demon%20Days", "Humanz", "The%20Fall"]
   },
   {
-    "category": "General%20Knowledge",
+    "category": "General Knowledge",
     "type": "boolean",
     "difficulty": "easy",
     "question": "Scotland%20voted%20to%20become%20an%20independent%20country%20during%20the%20referendum%20from%20September%202014.",
@@ -172,7 +172,7 @@
     "incorrect_answers": ["True"]
   },
   {
-    "category": "Entertainment%3A%20Video%20Games",
+    "category": "Video Games",
     "type": "multiple",
     "difficulty": "medium",
     "question": "In%20Left%204%20Dead%2C%20which%20campaign%20has%20the%20protagonists%20going%20through%20a%20subway%20in%20order%20to%20reach%20a%20hospital%20for%20evacuation%3F",
