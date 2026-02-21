@@ -7,7 +7,7 @@ import ResultsCard from '@/components/quiz/ResultsCard'
 import TopProgressBar from '@/components/ui/TopProgressBar'
 import ScoreProgressBar from '@/components/ui/ScoreProgressBar'
 import DifficultyStars from '@/components/quiz/DifficultyStars'
-import { useQuiz } from '@/hooks'
+import { useQuiz } from '@/hooks/useQuiz'
 
 export default function QuizPage() {
   const router = useRouter()
@@ -15,38 +15,48 @@ export default function QuizPage() {
     state,
     currentQuestion,
     totalQuestions,
-    scorePercentage,
-    wrongAnswersPercentage,
-    maxPossibleScorePercentage,
-    remainingFromMaxPercentage,
-    topProgressPercentage,
+    stats,
     getFeedbackTitle,
     getNextButtonLabel,
     handleOptionSelect,
     handleNextQuestion,
-    resetQuiz
+    resetQuiz,
+    goToHome
   } = useQuiz()
 
-  const { isQuizComplete, selectedOptionIndex, isAnswerRevealed } = state
+  const { 
+    isQuizComplete, 
+    selectedOptionIndex, 
+    isAnswerRevealed,
+    correctAnswersCount
+  } = state
+
+  const {
+    scorePercent,
+    wrongPercent,
+    maxPossiblePercent,
+    remainingFromMaxPercent,
+    topProgressPercent
+  } = stats
+  const handleRetake = () => {
+    resetQuiz()
+  }
 
   return (
     <>
-      {!isQuizComplete && <TopProgressBar percent={topProgressPercentage} />}
+      {!isQuizComplete && <TopProgressBar percent={topProgressPercent} />}
 
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
           {isQuizComplete ? (
             <ResultsCard 
-              score={state.correctAnswersCount}
+              score={correctAnswersCount}
               total={totalQuestions}
-              onRetake={() => {
-                resetQuiz()
-                router.push('/quiz')
-              }}
-              onHome={() => router.push('/')}
+              onRetake={handleRetake}
+              onHome={goToHome}
             />
           ) : (
-            <div className="rounded-xl bg-white p-8 shadow-xl mt-5">
+            <div className="rounded-xl mt-5 bg-white p-8 shadow-xl">
               <header className="mb-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -73,7 +83,7 @@ export default function QuizPage() {
                     <Button 
                       onClick={handleNextQuestion} 
                       size="lg"
-                      className="text-base md:text-lg lg:text-xl font-[400]  px-4 py-2 bg-[#dcdedc] border border-black rounded-md  hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]"
+                      className="text-base md:text-lg lg:text-xl font-[400] px-4 py-2 bg-[#dcdedc] border border-black rounded-md hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]"
                     >
                       {getNextButtonLabel()}
                     </Button>
@@ -83,14 +93,14 @@ export default function QuizPage() {
 
               <footer className="mt-16">
                 <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
-                  <div>Score: {scorePercentage}%</div>
-                  <div>Max Score: {maxPossibleScorePercentage}%</div>
+                  <div>Score: {scorePercent}%</div>
+                  <div>Max Score: {maxPossiblePercent}%</div>
                 </div>
                 <ScoreProgressBar
-                  scorePercent={scorePercentage}
-                  wrongPercent={wrongAnswersPercentage}
-                  maxPossiblePercent={maxPossibleScorePercentage}
-                  remainingFromMaxPercent={remainingFromMaxPercentage}
+                  scorePercent={scorePercent}
+                  wrongPercent={wrongPercent}
+                  maxPossiblePercent={maxPossiblePercent}
+                  remainingFromMaxPercent={remainingFromMaxPercent}
                 />
               </footer>
             </div>

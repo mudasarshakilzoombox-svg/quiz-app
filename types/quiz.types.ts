@@ -18,8 +18,12 @@ export interface QuizState {
   isQuizComplete: boolean
 }
 
-export interface QuizResults {
-  score: number
-  total: number
-  percentage: number
-}
+export type QuizAction =
+  | { type: 'SET_QUESTIONS'; payload: Question[] }
+  | { type: 'SET_QUESTION_INDEX'; payload: number }
+  | { type: 'SET_SELECTED_OPTION'; payload: number | null }
+  | { type: 'INCREMENT_CORRECT_COUNT' }
+  | { type: 'SET_ANSWER_REVEALED'; payload: boolean }
+  | { type: 'SET_QUIZ_COMPLETE'; payload: boolean }
+  | { type: 'RESET_QUIZ' }
+  | { type: 'LOAD_SAVED_STATE'; payload: Partial<QuizState> }

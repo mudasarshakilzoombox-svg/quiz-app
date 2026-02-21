@@ -12,7 +12,6 @@ export default function StartButton({ children, ...rest }: React.ComponentProps<
     e?.preventDefault()
     if (loading) return
     setLoading(true)
-    // show spinner briefly, then navigate to quiz
     setTimeout(() => {
       router.push('/quiz')
     }, 600)

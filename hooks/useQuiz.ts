@@ -1,7 +1,8 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { quizReducer, initialQuizState, QuizActionType } from '@/reducers/quizReducer'
-import { decode, shuffle } from '@/utils/quiz'
+import { quizReducer, initialQuizState } from '@/reducers/quizReducer'
+import { decode, shuffle, formatCategory } from '@/utils/quiz'
+import { safeLocalStorageGet, safeLocalStorageSet, safeLocalStorageRemove, safeJsonParse } from '@/utils/storage'
 import type { RawQuestion, Question, DifficultyLevel } from '@/types'
 
 export function useQuiz() {
@@ -10,31 +11,44 @@ export function useQuiz() {
 
   useEffect(() => {
     let mounted = true
-    const savedQuestions = localStorage.getItem('quiz_questions')
     
-    if (savedQuestions) {
-      const parsed = JSON.parse(savedQuestions)
-      if (mounted) dispatch({ type: QuizActionType.SET_QUESTIONS, payload: parsed })
-      return
-    }
+    const loadQuestions = async () => {
+      const shouldReset = sessionStorage.getItem('quiz_should_reset')
+      if (shouldReset === 'true') {
+        sessionStorage.removeItem('quiz_should_reset')
+        safeLocalStorageRemove('quiz_state')
+        safeLocalStorageRemove('quiz_questions')
+        safeLocalStorageRemove('quiz_results')
+      }
+      
+      const savedQuestions = safeLocalStorageGet('quiz_questions')
+      
+      if (savedQuestions && shouldReset !== 'true') {
+        const parsed = safeJsonParse<Question[]>(savedQuestions, [])
+        if (mounted && parsed.length > 0) {
+          dispatch({ type: 'SET_QUESTIONS', payload: parsed })
+          return
+        }
+      }
 
-    fetch('/api/questions')
-      .then((response) => response.json())
-      .then((rawQuestions: RawQuestion[]) => {
+      try {
+        const response = await fetch('/api/questions')
+        const rawQuestions: RawQuestion[] = await response.json()
+        
         if (!mounted) return
         
-        const mappedQuestions: Question[] = rawQuestions.map((rawQuestion, index) => {
+        const mappedQuestions: Question[] = rawQuestions.map((rawQuestion, questionIndex) => {
           const correctAnswer = decode(rawQuestion.correct_answer || '')
-          const incorrectAnswers = (rawQuestion.incorrect_answers || []).map((answer: string) => decode(answer))
+          const incorrectAnswers = (rawQuestion.incorrect_answers || []).map((incorrectAnswer: string) => decode(incorrectAnswer))
           const shuffledOptions = shuffle([...incorrectAnswers, correctAnswer])
           const correctOptionIndex = shuffledOptions.findIndex((option) => option === correctAnswer)
           
           return {
-            id: index + 1,
+            id: questionIndex + 1,
             question: decode(rawQuestion.question || ''),
             options: shuffledOptions,
             correctIndex: correctOptionIndex,
-            category: rawQuestion.category ? decode(rawQuestion.category) : 'General',
+            category: formatCategory(rawQuestion.category),
             difficulty: (rawQuestion.difficulty || 'easy') as DifficultyLevel,
           }
         })
@@ -43,134 +57,165 @@ export function useQuiz() {
         const questionsLimit = Math.min(20, shuffledQuestions.length)
         const finalQuestions = shuffledQuestions.slice(0, questionsLimit)
         
-        dispatch({ type: QuizActionType.SET_QUESTIONS, payload: finalQuestions })
+        dispatch({ type: 'SET_QUESTIONS', payload: finalQuestions })
+        safeLocalStorageSet('quiz_questions', finalQuestions)
         
-        try {
-          localStorage.setItem('quiz_questions', JSON.stringify(finalQuestions))
-        } catch (error) {
-          console.error('Failed to save questions:', error)
-        }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error('Failed to fetch questions:', error)
-      })
-      
+      }
+    }
+    
+    loadQuestions()
+    
     return () => {
       mounted = false
     }
   }, [])
 
   useEffect(() => {
-    const savedState = localStorage.getItem('quiz_state')
+    const shouldReset = sessionStorage.getItem('quiz_should_reset')
+    if (shouldReset === 'true') return
+    
+    const savedState = safeLocalStorageGet('quiz_state')
     if (savedState) {
-      try {
-        const parsedState = JSON.parse(savedState)
-        dispatch({ type: QuizActionType.LOAD_SAVED_STATE, payload: parsedState })
-      } catch (error) {
-        console.error('Failed to load saved state:', error)
+      const parsedState = safeJsonParse(savedState, {})
+      if (Object.keys(parsedState).length > 0) {
+        dispatch({ type: 'LOAD_SAVED_STATE', payload: parsedState })
       }
     }
   }, [])
 
   useEffect(() => {
+    if (state.questions.length === 0) return
+    if (state.isQuizComplete) return 
+    
     const stateToSave = {
       currentQuestionIndex: state.currentQuestionIndex,
       correctAnswersCount: state.correctAnswersCount,
       selectedOptionIndex: state.selectedOptionIndex,
       isAnswerRevealed: state.isAnswerRevealed,
     }
-    try {
-      localStorage.setItem('quiz_state', JSON.stringify(stateToSave))
-    } catch (error) {
-      console.error('Failed to save state:', error)
-    }
-  }, [state.currentQuestionIndex, state.correctAnswersCount, state.selectedOptionIndex, state.isAnswerRevealed])
+    safeLocalStorageSet('quiz_state', stateToSave)
+  }, [
+    state.currentQuestionIndex, 
+    state.correctAnswersCount, 
+    state.selectedOptionIndex, 
+    state.isAnswerRevealed,
+    state.isQuizComplete,
+    state.questions.length
+  ])
 
-  const handleOptionSelect = (optionIndex: number) => {
+  const handleOptionSelect = useCallback((optionIndex: number) => {
     if (state.isAnswerRevealed) return
-    dispatch({ type: QuizActionType.SET_SELECTED_OPTION, payload: optionIndex })
+    
+    dispatch({ type: 'SET_SELECTED_OPTION', payload: optionIndex })
+    
     if (optionIndex === state.questions[state.currentQuestionIndex]?.correctIndex) {
-      dispatch({ type: QuizActionType.INCREMENT_CORRECT_COUNT })
+      dispatch({ type: 'INCREMENT_CORRECT_COUNT' })
     }
-    dispatch({ type: QuizActionType.SET_ANSWER_REVEALED, payload: true })
-  }
+    
+    dispatch({ type: 'SET_ANSWER_REVEALED', payload: true })
+  }, [state.isAnswerRevealed, state.questions, state.currentQuestionIndex])
 
-  const handleNextQuestion = () => {
-    if (!state.isAnswerRevealed) {
-      if (state.selectedOptionIndex === null) return
-      if (state.selectedOptionIndex === state.questions[state.currentQuestionIndex]?.correctIndex) {
-        dispatch({ type: QuizActionType.INCREMENT_CORRECT_COUNT })
-      }
-      dispatch({ type: QuizActionType.SET_ANSWER_REVEALED, payload: true })
-      return
-    }
-
+  const handleNextQuestion = useCallback(() => {
     const nextQuestionIndex = state.currentQuestionIndex + 1
+    
     if (nextQuestionIndex >= state.questions.length) {
-      dispatch({ type: QuizActionType.SET_QUIZ_COMPLETE, payload: true })
-      try {
-        localStorage.setItem('quiz_results', JSON.stringify({ 
-          score: state.correctAnswersCount, 
-          total: state.questions.length 
-        }))
-      } catch (error) {
-        console.error('Failed to save results:', error)
-      }
+      dispatch({ type: 'SET_QUIZ_COMPLETE', payload: true })
+      safeLocalStorageSet('quiz_results', { 
+        score: state.correctAnswersCount, 
+        total: state.questions.length 
+      })
     } else {
-      dispatch({ type: QuizActionType.SET_QUESTION_INDEX, payload: nextQuestionIndex })
+      dispatch({ type: 'SET_QUESTION_INDEX', payload: nextQuestionIndex })
     }
-  }
+  }, [state.currentQuestionIndex, state.questions.length, state.correctAnswersCount])
 
-  const resetQuiz = () => {
-    dispatch({ type: QuizActionType.RESET_QUIZ })
-    localStorage.removeItem('quiz_state')
-    localStorage.removeItem('quiz_questions')
-    localStorage.removeItem('quiz_results')
-  }
+  const resetQuiz = useCallback(() => {
+    dispatch({ type: 'RESET_QUIZ' })
+    safeLocalStorageRemove('quiz_state')
+    safeLocalStorageRemove('quiz_results')
+    sessionStorage.setItem('quiz_should_reset', 'true')
+    
+  }, [])
 
-  const currentQuestion = state.questions[state.currentQuestionIndex] || { 
-    id: 0,
-    question: '', 
-    options: [], 
-    correctIndex: 0, 
-    category: '', 
-    difficulty: 'easy' as DifficultyLevel
-  }
+  const goToHome = useCallback(() => {
+    sessionStorage.setItem('quiz_should_reset', 'true')
+    dispatch({ type: 'RESET_QUIZ' })
+    safeLocalStorageRemove('quiz_state')
+    safeLocalStorageRemove('quiz_questions')
+    safeLocalStorageRemove('quiz_results')
+    router.push('/')
+  }, [router])
+
+  const currentQuestion = useMemo(() => 
+    state.questions[state.currentQuestionIndex] || { 
+      id: 0,
+      question: '', 
+      options: [], 
+      correctIndex: 0, 
+      category: '', 
+      difficulty: 'easy' as DifficultyLevel
+    }, 
+    [state.questions, state.currentQuestionIndex]
+  )
 
   const totalQuestions = state.questions.length
-  const answeredQuestionsCount = state.isAnswerRevealed ? state.currentQuestionIndex + 1 : state.currentQuestionIndex
-  const wrongAnswersCount = Math.max(0, answeredQuestionsCount - state.correctAnswersCount)
 
-  const scorePercentage = totalQuestions ? Math.round((state.correctAnswersCount / totalQuestions) * 100) : 0
-  const wrongAnswersPercentage = totalQuestions ? Math.round((wrongAnswersCount / totalQuestions) * 100) : 0
-  const maxPossibleScorePercentage = totalQuestions ? 
-    Math.round(((state.correctAnswersCount + (totalQuestions - (state.currentQuestionIndex + 1))) / totalQuestions) * 100) : 0
-  const remainingFromMaxPercentage = Math.max(0, maxPossibleScorePercentage - scorePercentage)
-  const topProgressPercentage = totalQuestions ? 
-    Math.round(((state.currentQuestionIndex + 1) / totalQuestions) * 100) : 0
+  const stats = useMemo(() => {
+    const answeredCount = state.isAnswerRevealed ? state.currentQuestionIndex + 1 : state.currentQuestionIndex
+    const wrongCount = Math.max(0, answeredCount - state.correctAnswersCount)
+    
+    const scorePercent = totalQuestions ? 
+      Math.min(100, Math.max(0, Math.round((state.correctAnswersCount / totalQuestions) * 100))) : 0
+    
+    const wrongPercent = totalQuestions ? 
+      Math.min(100, Math.max(0, Math.round((wrongCount / totalQuestions) * 100))) : 0
+    
+    const remainingQuestions = totalQuestions - state.currentQuestionIndex
+    const maxPossibleScore = state.correctAnswersCount + remainingQuestions
+    const safeMaxPossibleScore = Math.min(totalQuestions, Math.max(0, maxPossibleScore))
+    const maxPossiblePercent = totalQuestions ? 
+      Math.min(100, Math.max(0, Math.round((safeMaxPossibleScore / totalQuestions) * 100))) : 0
+    
+    const remainingPotentialPercent = Math.max(0, maxPossiblePercent - scorePercent)
+    const topProgressPercent = totalQuestions ? 
+      Math.min(100, Math.max(0, Math.round(((state.currentQuestionIndex + 1) / totalQuestions) * 100))) : 0
 
-  const getFeedbackTitle = () => {
+    return {
+      scorePercent,
+      wrongPercent,
+      maxPossiblePercent,
+      remainingFromMaxPercent: remainingPotentialPercent,
+      topProgressPercent,
+      wrongCount
+    }
+  }, [
+    state.correctAnswersCount, 
+    state.currentQuestionIndex, 
+    state.isAnswerRevealed, 
+    totalQuestions
+  ])
+
+  const getFeedbackTitle = useCallback(() => {
     return state.selectedOptionIndex === currentQuestion.correctIndex ? 'Correct!' : 'Sorry!'
-  }
+  }, [state.selectedOptionIndex, currentQuestion.correctIndex])
 
-  const getNextButtonLabel = () => {
+  const getNextButtonLabel = useCallback(() => {
     return state.currentQuestionIndex + 1 >= totalQuestions ? 'See Results' : 'Next Question'
-  }
+  }, [state.currentQuestionIndex, totalQuestions])
 
   return {
     state,
     currentQuestion,
     totalQuestions,
-    scorePercentage,
-    wrongAnswersPercentage,
-    maxPossibleScorePercentage,
-    remainingFromMaxPercentage,
-    topProgressPercentage,
+    stats,
     getFeedbackTitle,
     getNextButtonLabel,
     handleOptionSelect,
     handleNextQuestion,
     resetQuiz,
+    goToHome,
     dispatch
   }
 }
