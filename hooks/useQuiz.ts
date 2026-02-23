@@ -5,23 +5,44 @@ import { decode, shuffle, formatCategory } from '@/utils/quiz'
 import { safeLocalStorageGet, safeLocalStorageSet, safeLocalStorageRemove, safeJsonParse } from '@/utils/storage'
 import type { RawQuestion, Question, DifficultyLevel } from '@/types'
 
+const STORAGE_KEYS = {
+  QUESTIONS: 'quiz_questions',
+  STATE: 'quiz_state',
+  RESULTS: 'quiz_results',
+  RESET_FLAG: 'quiz_should_reset'
+} as const
+
+const QUESTIONS_LIMIT = 20
+
 export function useQuiz() {
   const router = useRouter()
   const [state, dispatch] = useReducer(quizReducer, initialQuizState)
+
+  const clearStorage = useCallback((options?: { keepQuestions?: boolean }) => {
+    safeLocalStorageRemove(STORAGE_KEYS.STATE)
+    safeLocalStorageRemove(STORAGE_KEYS.RESULTS)
+    
+    if (!options?.keepQuestions) {
+      safeLocalStorageRemove(STORAGE_KEYS.QUESTIONS)
+    }
+  }, [])
+
+  const setResetFlag = useCallback(() => {
+    sessionStorage.setItem(STORAGE_KEYS.RESET_FLAG, 'true')
+  }, [])
 
   useEffect(() => {
     let mounted = true
     
     const loadQuestions = async () => {
-      const shouldReset = sessionStorage.getItem('quiz_should_reset')
+      const shouldReset = sessionStorage.getItem(STORAGE_KEYS.RESET_FLAG)
+      
       if (shouldReset === 'true') {
-        sessionStorage.removeItem('quiz_should_reset')
-        safeLocalStorageRemove('quiz_state')
-        safeLocalStorageRemove('quiz_questions')
-        safeLocalStorageRemove('quiz_results')
+        sessionStorage.removeItem(STORAGE_KEYS.RESET_FLAG)
+        clearStorage()
       }
       
-      const savedQuestions = safeLocalStorageGet('quiz_questions')
+      const savedQuestions = safeLocalStorageGet(STORAGE_KEYS.QUESTIONS)
       
       if (savedQuestions && shouldReset !== 'true') {
         const parsed = safeJsonParse<Question[]>(savedQuestions, [])
@@ -54,11 +75,10 @@ export function useQuiz() {
         })
         
         const shuffledQuestions = shuffle(mappedQuestions)
-        const questionsLimit = Math.min(20, shuffledQuestions.length)
-        const finalQuestions = shuffledQuestions.slice(0, questionsLimit)
+        const finalQuestions = shuffledQuestions.slice(0, QUESTIONS_LIMIT)
         
         dispatch({ type: 'SET_QUESTIONS', payload: finalQuestions })
-        safeLocalStorageSet('quiz_questions', finalQuestions)
+        safeLocalStorageSet(STORAGE_KEYS.QUESTIONS, finalQuestions)
         
       } catch (error) {
         console.error('Failed to fetch questions:', error)
@@ -70,13 +90,13 @@ export function useQuiz() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [clearStorage])
 
   useEffect(() => {
-    const shouldReset = sessionStorage.getItem('quiz_should_reset')
+    const shouldReset = sessionStorage.getItem(STORAGE_KEYS.RESET_FLAG)
     if (shouldReset === 'true') return
     
-    const savedState = safeLocalStorageGet('quiz_state')
+    const savedState = safeLocalStorageGet(STORAGE_KEYS.STATE)
     if (savedState) {
       const parsedState = safeJsonParse(savedState, {})
       if (Object.keys(parsedState).length > 0) {
@@ -95,7 +115,7 @@ export function useQuiz() {
       selectedOptionIndex: state.selectedOptionIndex,
       isAnswerRevealed: state.isAnswerRevealed,
     }
-    safeLocalStorageSet('quiz_state', stateToSave)
+    safeLocalStorageSet(STORAGE_KEYS.STATE, stateToSave)
   }, [
     state.currentQuestionIndex, 
     state.correctAnswersCount, 
@@ -122,7 +142,7 @@ export function useQuiz() {
     
     if (nextQuestionIndex >= state.questions.length) {
       dispatch({ type: 'SET_QUIZ_COMPLETE', payload: true })
-      safeLocalStorageSet('quiz_results', { 
+      safeLocalStorageSet(STORAGE_KEYS.RESULTS, { 
         score: state.correctAnswersCount, 
         total: state.questions.length 
       })
@@ -133,20 +153,16 @@ export function useQuiz() {
 
   const resetQuiz = useCallback(() => {
     dispatch({ type: 'RESET_QUIZ' })
-    safeLocalStorageRemove('quiz_state')
-    safeLocalStorageRemove('quiz_results')
-    sessionStorage.setItem('quiz_should_reset', 'true')
-    
-  }, [])
+    clearStorage({ keepQuestions: true })
+    setResetFlag()
+  }, [clearStorage, setResetFlag])
 
   const goToHome = useCallback(() => {
-    sessionStorage.setItem('quiz_should_reset', 'true')
+    setResetFlag()
     dispatch({ type: 'RESET_QUIZ' })
-    safeLocalStorageRemove('quiz_state')
-    safeLocalStorageRemove('quiz_questions')
-    safeLocalStorageRemove('quiz_results')
+    clearStorage()
     router.push('/')
-  }, [router])
+  }, [router, clearStorage, setResetFlag])
 
   const currentQuestion = useMemo(() => 
     state.questions[state.currentQuestionIndex] || { 
@@ -163,24 +179,22 @@ export function useQuiz() {
   const totalQuestions = state.questions.length
 
   const stats = useMemo(() => {
+    const calculatePercentage = (value: number, total: number) => 
+      total ? Math.min(100, Math.max(0, Math.round((value / total) * 100))) : 0
+
     const answeredCount = state.isAnswerRevealed ? state.currentQuestionIndex + 1 : state.currentQuestionIndex
     const wrongCount = Math.max(0, answeredCount - state.correctAnswersCount)
     
-    const scorePercent = totalQuestions ? 
-      Math.min(100, Math.max(0, Math.round((state.correctAnswersCount / totalQuestions) * 100))) : 0
-    
-    const wrongPercent = totalQuestions ? 
-      Math.min(100, Math.max(0, Math.round((wrongCount / totalQuestions) * 100))) : 0
+    const scorePercent = calculatePercentage(state.correctAnswersCount, totalQuestions)
+    const wrongPercent = calculatePercentage(wrongCount, totalQuestions)
     
     const remainingQuestions = totalQuestions - state.currentQuestionIndex
     const maxPossibleScore = state.correctAnswersCount + remainingQuestions
     const safeMaxPossibleScore = Math.min(totalQuestions, Math.max(0, maxPossibleScore))
-    const maxPossiblePercent = totalQuestions ? 
-      Math.min(100, Math.max(0, Math.round((safeMaxPossibleScore / totalQuestions) * 100))) : 0
+    const maxPossiblePercent = calculatePercentage(safeMaxPossibleScore, totalQuestions)
     
     const remainingPotentialPercent = Math.max(0, maxPossiblePercent - scorePercent)
-    const topProgressPercent = totalQuestions ? 
-      Math.min(100, Math.max(0, Math.round(((state.currentQuestionIndex + 1) / totalQuestions) * 100))) : 0
+    const topProgressPercent = calculatePercentage(state.currentQuestionIndex + 1, totalQuestions)
 
     return {
       scorePercent,
@@ -197,13 +211,15 @@ export function useQuiz() {
     totalQuestions
   ])
 
-  const getFeedbackTitle = useCallback(() => {
-    return state.selectedOptionIndex === currentQuestion.correctIndex ? 'Correct!' : 'Sorry!'
-  }, [state.selectedOptionIndex, currentQuestion.correctIndex])
+  const getFeedbackTitle = useCallback(() => 
+    state.selectedOptionIndex === currentQuestion.correctIndex ? 'Correct!' : 'Sorry!',
+    [state.selectedOptionIndex, currentQuestion.correctIndex]
+  )
 
-  const getNextButtonLabel = useCallback(() => {
-    return state.currentQuestionIndex + 1 >= totalQuestions ? 'See Results' : 'Next Question'
-  }, [state.currentQuestionIndex, totalQuestions])
+  const getNextButtonLabel = useCallback(() => 
+    state.currentQuestionIndex + 1 >= totalQuestions ? 'See Results' : 'Next Question',
+    [state.currentQuestionIndex, totalQuestions]
+  )
 
   return {
     state,
