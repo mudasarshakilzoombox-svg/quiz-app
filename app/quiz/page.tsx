@@ -1,18 +1,16 @@
 "use client"
-import React from 'react'
-import { useRouter } from 'next/navigation'
-import Button from '@/components/ui/Button'
-import QuestionCard from '@/components/quiz/QuestionCard'
-import ResultsCard from '@/components/quiz/ResultsCard'
-import TopProgressBar from '@/components/ui/TopProgressBar'
-import ScoreProgressBar from '@/components/ui/ScoreProgressBar'
-import DifficultyStars from '@/components/quiz/DifficultyStars'
-import { useQuiz } from '@/hooks/useQuiz'
+
+import React from "react"
+import Button from "@/components/ui/Button"
+import QuestionCard from "@/components/quiz/QuestionCard"
+import ResultsCard from "@/components/quiz/ResultsCard"
+import TopProgressBar from "@/components/ui/TopProgressBar"
+import ScoreProgressBar from "@/components/ui/ScoreProgressBar"
+import DifficultyStars from "@/components/quiz/DifficultyStars"
+import { useQuiz } from "@/hooks/useQuiz"
 
 export default function QuizPage() {
-  const router = useRouter()
   const {
-    state,
     currentQuestion,
     totalQuestions,
     stats,
@@ -21,81 +19,91 @@ export default function QuizPage() {
     handleOptionSelect,
     handleNextQuestion,
     resetQuiz,
-    goToHome
-  } = useQuiz()
+    goToHome,
 
-  const { 
-    isQuizComplete, 
-    selectedOptionIndex, 
+    selectedOptionIndex,
     isAnswerRevealed,
-    correctAnswersCount
-  } = state
+    correctAnswersCount,
+    currentQuestionIndex,
+    isQuizComplete,
+  } = useQuiz()
 
   const {
     scorePercent,
     wrongPercent,
     maxPossiblePercent,
     remainingFromMaxPercent,
-    topProgressPercent
+    topProgressPercent,
   } = stats
-  const handleRetake = () => {
-    resetQuiz()
-  }
 
   return (
     <>
-      {!isQuizComplete && <TopProgressBar percent={topProgressPercent} />}
+      {!isQuizComplete && (
+        <TopProgressBar percent={topProgressPercent} />
+      )}
 
       <main className="flex min-h-screen items-center justify-center bg-gray-50 p-8">
         <div className="w-full max-w-2xl">
+
           {isQuizComplete ? (
-            <ResultsCard 
+            <ResultsCard
               score={correctAnswersCount}
               total={totalQuestions}
-              onRetake={handleRetake}
+              onRetake={resetQuiz}
               onHome={goToHome}
             />
+          ) : !currentQuestion ? (
+            <div className="rounded-xl mt-5 bg-white p-8 shadow-xl text-center">
+              <h2 className="text-2xl font-bold text-gray-700">
+                Loading questions...
+              </h2>
+            </div>
           ) : (
             <div className="rounded-xl mt-5 bg-white p-8 shadow-xl">
+
               <header className="mb-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-3xl font-bold text-gray-700">
-                      Question {state.currentQuestionIndex + 1} of {totalQuestions}
-                    </h2>
-                    <div className="text-lg text-gray-600">Entertainment: {currentQuestion.category}</div>
-                    <DifficultyStars difficulty={currentQuestion.difficulty} />
-                  </div>
+                <h2 className="text-3xl font-bold text-gray-700">
+                  Question {currentQuestionIndex + 1} of {totalQuestions}
+                </h2>
+
+                <div className="text-lg text-gray-600 mt-2">
+                  {currentQuestion.category}
                 </div>
+
+                <DifficultyStars
+                  difficulty={currentQuestion.difficulty}
+                />
               </header>
 
-              <QuestionCard 
-                question={currentQuestion} 
-                selectedOptionIndex={selectedOptionIndex} 
-                onOptionSelect={handleOptionSelect} 
-                isAnswerRevealed={isAnswerRevealed} 
+              <QuestionCard
+                question={currentQuestion}
+                selectedOptionIndex={selectedOptionIndex}
+                onOptionSelect={handleOptionSelect}
+                isAnswerRevealed={isAnswerRevealed}
               />
 
-              <div className="mt-4 text-center">
-                {isAnswerRevealed && (
-                  <div>
-                    <h3 className="mb-8 mt-12 text-2xl font-bold text-gray-800">{getFeedbackTitle()}</h3>
-                    <Button 
-                      onClick={handleNextQuestion} 
-                      size="lg"
-                      className="text-base md:text-lg lg:text-xl font-[400] px-4 py-2 bg-[#dcdedc] border border-black rounded-md hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]"
-                    >
-                      {getNextButtonLabel()}
-                    </Button>
-                  </div>
-                )}
-              </div>
+              {isAnswerRevealed && (
+                <div className="mt-6 text-center">
+                  <h3 className="mb-6 text-2xl font-bold text-gray-800">
+                    {getFeedbackTitle()}
+                  </h3>
+
+                  <Button
+                    onClick={handleNextQuestion}
+                    size="lg"
+                    className="px-4 py-2 bg-[#dcdedc] border border-black rounded-md hover:bg-[#9f9f9f] transition-colors cursor-pointer w-[200px]"
+                  >
+                    {getNextButtonLabel()}
+                  </Button>
+                </div>
+              )}
 
               <footer className="mt-16">
                 <div className="flex items-center justify-between text-md font-bold text-gray-900 mb-2">
                   <div>Score: {scorePercent}%</div>
                   <div>Max Score: {maxPossiblePercent}%</div>
                 </div>
+
                 <ScoreProgressBar
                   scorePercent={scorePercent}
                   wrongPercent={wrongPercent}

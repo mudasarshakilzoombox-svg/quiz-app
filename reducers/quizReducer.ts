@@ -1,4 +1,4 @@
-import type { QuizState, QuizAction } from '@/types/quiz.types'
+import type { QuizState, QuizActionType } from '@/types/quiz.types'
 
 export const initialQuizState: QuizState = {
   questions: [],
@@ -7,12 +7,19 @@ export const initialQuizState: QuizState = {
   correctAnswersCount: 0,
   isAnswerRevealed: false,
   isQuizComplete: false,
+  isLoading: false,
+  error: null,
 }
 
-export function quizReducer(state: QuizState, action: QuizAction): QuizState {
+export function quizReducer(state: QuizState, action: QuizActionType): QuizState {
   switch (action.type) {
     case 'SET_QUESTIONS':
-      return { ...state, questions: action.payload }
+      return { 
+        ...state, 
+        questions: action.payload, 
+        isLoading: false,
+        error: null 
+      }
       
     case 'SET_QUESTION_INDEX':
       return { 
@@ -34,8 +41,17 @@ export function quizReducer(state: QuizState, action: QuizAction): QuizState {
     case 'SET_QUIZ_COMPLETE':
       return { ...state, isQuizComplete: action.payload }
       
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload }
+      
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, isLoading: false }
+      
     case 'RESET_QUIZ':
-      return initialQuizState
+      return {
+        ...initialQuizState,
+        questions: state.questions, 
+      }
       
     case 'LOAD_SAVED_STATE':
       return {
